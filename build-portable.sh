@@ -91,10 +91,10 @@ Everything is inside this directory: Python, dependencies, voice model and the
 server itself. Remove the directory to uninstall. No Docker, no system Python,
 no pip, no systemd unit.
 
-This build is for Linux x86_64 with glibc 2.28 or newer (Debian 10+, Ubuntu
-20.04+, Proxmox Debian 12). It includes Piper only; mp3 output and wav/pcm are
-built in. For flac/opus/aac output, install ffmpeg on the LXC (BookOrbit uses
-mp3 by default, so this is optional).
+This build is Linux x86_64. The ONNX Runtime wheel inside it is tagged
+manylinux_2_28, so the host needs glibc 2.28 or newer. It includes Piper
+only. MP3, WAV, and PCM are built in. FLAC, Opus, and AAC need ffmpeg on
+the host. Kokoro speed changes use ffmpeg atempo when ffmpeg is installed.
 
 Bundled voice: $VOICE (CC0). Other voices have their own licenses; see
 THIRD_PARTY_NOTICES.md before redistributing them.

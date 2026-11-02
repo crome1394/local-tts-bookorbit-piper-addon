@@ -11,12 +11,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
-- `POST /dev/captioned_speech` returns the audio and the time of each word, which is what BookOrbit uses for word highlighting. The timings come from the phoneme lengths Piper already computes.
-- A `voices/` directory for Piper models downloaded from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices/tree/main). Nested folders, including `en/en_US/ryan/high`, are picked up. Files that are not a Piper voice id, or that resolve outside the directory, are ignored.
+- `POST /dev/captioned_speech` returns base64 audio and a start and end time for each word. BookOrbit calls that path for word highlighting. Phoneme lengths are used when Piper returns them. This project does not install the `onnx` package those lengths require, so without it the clip is split across the words by length.
+- A `voices/` directory for Piper models from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices/tree/main). Nested folders, including `en/en_US/ryan/high`, are picked up. Files that are not a Piper voice id, or that resolve outside the directory, are ignored.
 
 ### Changed
 
-- The README is shorter, keeps the badge row, and links the portable tarball.
+- README, SECURITY, `voices/README.md`, and the third-party notices were rewritten from the current code. The badge row stays. The download link is the portable tarball.
 
 ## [0.1.1] - 2026-11-01
 
