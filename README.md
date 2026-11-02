@@ -12,10 +12,9 @@ and never sends your books to a cloud service.
 [![Platform: Linux x86_64](https://img.shields.io/badge/platform-linux%20x86__64-lightgrey.svg)](#portable-bundle)
 [![BookOrbit](https://img.shields.io/badge/BookOrbit-OpenAI%20TTS-6f42c1.svg)](https://bookorbit.app)
 
-[**Download the portable bundle**](https://github.com/crome1394/local-tts-bookorbit-piper-addon/releases/latest) ·
-[**Listen to a sample**](docs/sample.mp3) ·
 [**Connect BookOrbit**](#connect-bookorbit) ·
-[**Proxmox tuning**](#proxmox-lxc-2-cores--4-gb)
+[**Proxmox tuning**](#proxmox-lxc-2-cores--4-gb) ·
+[**Build the portable bundle**](#portable-bundle)
 
 ---
 
@@ -36,17 +35,23 @@ Piper voice.
 
 ### Quick start
 
-```bash
-curl -L -o local-tts-bookorbit-piper-addon.tar.gz \
-  https://github.com/crome1394/local-tts-bookorbit-piper-addon/releases/latest/download/local-tts-bookorbit-piper-addon-linux-x86_64.tar.gz
+From a clone (Python 3.10+):
 
-tar -xzf local-tts-bookorbit-piper-addon.tar.gz
+```bash
+git clone https://github.com/crome1394/local-tts-bookorbit-piper-addon.git
 cd local-tts-bookorbit-piper-addon
+chmod +x install.sh run.sh build-portable.sh
+./install.sh --local --host 127.0.0.1
 ./run.sh
 ```
 
 That starts the server on `http://127.0.0.1:8765`, using Piper, one ONNX thread,
 one request at a time, and `nice 5` so BookOrbit keeps priority.
+
+A vanilla LXC does not need a system Python. Build the self-contained tarball
+with `./build-portable.sh` (see [Portable bundle](#portable-bundle)), copy it
+into the container, and run `./run.sh` from the extracted directory. A GitHub
+release asset is not attached yet.
 
 Then add the provider in BookOrbit:
 
@@ -165,16 +170,27 @@ The release tarball is a self-contained Linux x86_64 directory:
 - the TTS server itself
 - no system Python, pip, virtualenv, Docker, or apt packages required
 
-Download it from the [latest release](https://github.com/crome1394/local-tts-bookorbit-piper-addon/releases/latest),
-or use the stable link:
+Build it on a machine with `curl`, `tar`, and `espeak-ng`:
+
+```bash
+chmod +x build-portable.sh
+./build-portable.sh
+```
+
+The script writes `dist/local-tts-bookorbit-piper-addon-linux-x86_64.tar.gz`.
+Copy that file into the LXC, then:
+
+```bash
+tar -xzf local-tts-bookorbit-piper-addon-linux-x86_64.tar.gz
+cd local-tts-bookorbit-piper-addon
+./run.sh
+```
+
+When a GitHub release is attached, the same archive is also at:
 
 ```bash
 curl -L -o local-tts-bookorbit-piper-addon.tar.gz \
   https://github.com/crome1394/local-tts-bookorbit-piper-addon/releases/latest/download/local-tts-bookorbit-piper-addon-linux-x86_64.tar.gz
-
-tar -xzf local-tts-bookorbit-piper-addon.tar.gz
-cd local-tts-bookorbit-piper-addon
-./run.sh
 ```
 
 The bundle is about **174 MB compressed** and **376 MB extracted** (the exact
@@ -237,6 +253,7 @@ yourself.
 ```bash
 git clone https://github.com/crome1394/local-tts-bookorbit-piper-addon.git
 cd local-tts-bookorbit-piper-addon
+chmod +x install.sh run.sh build-portable.sh
 
 ./install.sh --local --host 127.0.0.1
 ./run.sh
@@ -539,6 +556,7 @@ python3 -m venv .venv
 Build the portable bundle:
 
 ```bash
+chmod +x build-portable.sh
 ./build-portable.sh
 ```
 

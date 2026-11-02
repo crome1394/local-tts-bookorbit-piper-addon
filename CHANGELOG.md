@@ -7,6 +7,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+
+- The README quick start clones the repository. The portable tarball is built
+  with `./build-portable.sh`. A GitHub release asset is not attached yet.
+- Clone instructions run `chmod +x` on the shell scripts before `./install.sh`.
+
 ## [0.1.1] - 2026-11-01
 
 Security and resource review for a 2-core / 4 GB LXC shared with BookOrbit.
