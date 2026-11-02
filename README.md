@@ -12,6 +12,7 @@ and never sends your books to a cloud service.
 [![Platform: Linux x86_64](https://img.shields.io/badge/platform-linux%20x86__64-lightgrey.svg)](#portable-bundle)
 [![BookOrbit](https://img.shields.io/badge/BookOrbit-OpenAI%20TTS-6f42c1.svg)](https://bookorbit.app)
 
+[**Listen to a sample**](docs/sample.mp3) ·
 [**Connect BookOrbit**](#connect-bookorbit) ·
 [**Proxmox tuning**](#proxmox-lxc-2-cores--4-gb) ·
 [**Build the portable bundle**](#portable-bundle)
