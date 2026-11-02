@@ -12,6 +12,7 @@ WorkingDirectory=/opt/local-tts-bookorbit-piper-addon
 Environment="BOOKORBIT_TTS_HOST=127.0.0.1"
 Environment="BOOKORBIT_TTS_PORT=8765"
 Environment="BOOKORBIT_TTS_ENGINE=piper"
+Environment="BOOKORBIT_TTS_VOICES_DIR=/opt/local-tts-bookorbit-piper-addon/voices"
 Environment="BOOKORBIT_TTS_THREADS=1"
 Environment="BOOKORBIT_TTS_CONCURRENCY=1"
 Environment="OMP_NUM_THREADS=1"

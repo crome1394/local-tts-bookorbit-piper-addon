@@ -11,7 +11,9 @@ import io
 import shutil
 import subprocess
 import wave
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from .timings import WordTiming
 
 SAMPLE_WIDTH = 2  # int16
 
@@ -35,9 +37,12 @@ class AudioError(RuntimeError):
 class AudioData:
     pcm: bytes  # little-endian signed 16-bit mono
     sample_rate: int
+    words: tuple[WordTiming, ...] = field(default_factory=tuple)
 
     @property
     def duration(self) -> float:
+        if self.sample_rate <= 0:
+            return 0.0
         return len(self.pcm) / (SAMPLE_WIDTH * self.sample_rate)
 
 
@@ -59,12 +64,20 @@ def concat(parts: list[AudioData], gap_ms: int = 120) -> AudioData:
     if any(part.sample_rate != rate for part in parts):
         raise AudioError("cannot join audio chunks that use different sample rates")
     silence = b"\x00\x00" * int(rate * gap_ms / 1000)
+    gap_s = gap_ms / 1000
     chunks: list[bytes] = []
+    words: list[WordTiming] = []
+    offset = 0.0
     for index, part in enumerate(parts):
         if index:
             chunks.append(silence)
+            offset += gap_s
         chunks.append(part.pcm)
-    return AudioData(b"".join(chunks), rate)
+        words.extend(
+            WordTiming(word.word, word.start + offset, word.end + offset) for word in part.words
+        )
+        offset += part.duration
+    return AudioData(b"".join(chunks), rate, tuple(words))
 
 
 def encode(audio: AudioData, fmt: str, mp3_bitrate: int = 64) -> tuple[bytes, str]:

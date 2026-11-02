@@ -148,6 +148,7 @@ ${user_line}WorkingDirectory=$ROOT
 Environment="BOOKORBIT_TTS_HOST=$HOST"
 Environment="BOOKORBIT_TTS_PORT=$PORT"
 Environment="BOOKORBIT_TTS_ENGINE=piper"
+Environment="BOOKORBIT_TTS_VOICES_DIR=$ROOT/voices"
 ${DATA_ENV}
 Environment="BOOKORBIT_TTS_THREADS=1"
 Environment="BOOKORBIT_TTS_CONCURRENCY=1"

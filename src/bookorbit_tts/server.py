@@ -9,6 +9,7 @@ Routes:
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -233,6 +234,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             media_type=CONTENT_TYPES[fmt],
             headers={"X-TTS-Engine": synth.engine.name, "Cache-Control": "no-store"},
         )
+
+    @app.post("/dev/captioned_speech", dependencies=[Depends(require_key)])
+    def captioned_speech(
+        body: SpeechRequest, synth: Synthesizer = Depends(synth_dependency)
+    ) -> dict:
+        """Audio plus word times. BookOrbit calls this for word highlighting.
+
+        The route is beside ``/v1``, not under it. Kokoro-FastAPI uses the
+        same path and JSON shape, which is what BookOrbit already requests.
+        """
+        fmt = (body.response_format or "mp3").lower()
+        if fmt not in CONTENT_TYPES:
+            raise HTTPException(status_code=400, detail=f"unsupported response_format {fmt!r}")
+        try:
+            payload, words = synth.speak_captioned(body.input, body.voice, body.speed, fmt)
+        except ServerBusy as exc:
+            raise HTTPException(
+                status_code=429, detail=str(exc), headers={"Retry-After": "2"}
+            ) from exc
+        except SynthesisError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception:
+            log.exception("synthesis failed")
+            raise HTTPException(status_code=503, detail="synthesis failed") from None
+        return {
+            "audio": base64.b64encode(payload).decode("ascii"),
+            "timestamps": [
+                {
+                    "word": word.word,
+                    "start_time": round(word.start, 3),
+                    "end_time": round(word.end, 3),
+                }
+                for word in words
+            ],
+        }
 
     @app.get("/v1/audio/voices", dependencies=[Depends(require_key)])
     def voices(synth: Synthesizer = Depends(synth_dependency)) -> dict:

@@ -64,6 +64,17 @@ def test_replaced_cache_entry_is_not_counted_twice(tmp_path):
     assert list(synth._cache.values()) == [b"wxyz"]
 
 
+def test_captioned_requests_reuse_one_synthesis(tmp_path):
+    engine = _Fake()
+    synth = Synthesizer(engine, Settings(engine="piper", data_dir=tmp_path))
+    first, words = synth.speak_captioned("Hello there", None, 1.0, "wav")
+    second, again = synth.speak_captioned("Hello there", None, 1.0, "wav")
+    assert engine.calls == 1
+    assert first == second
+    assert [word.word for word in words] == ["Hello", "there"]
+    assert again == words
+
+
 def test_cache_stays_inside_its_budget(tmp_path):
     pcm = b"\x00\x01" * 200_000
     synth = Synthesizer(_Fake(pcm), Settings(engine="piper", data_dir=tmp_path, cache_mb=1))

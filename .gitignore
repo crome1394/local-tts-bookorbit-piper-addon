@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 data/
+# Voices dropped in from Hugging Face. The note stays; the models do not.
+voices/**
+!voices/README.md
 .build/
 *.egg-info/
 dist/

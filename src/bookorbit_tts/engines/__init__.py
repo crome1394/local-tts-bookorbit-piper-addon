@@ -37,7 +37,7 @@ def make_engines(settings: Settings) -> dict[str, Engine]:
     kokoro = KokoroEngine(settings.kokoro_model, settings.kokoro_voices, settings.default_voice)
     if kokoro.available():
         engines["kokoro"] = kokoro
-    piper = PiperEngine(settings.voices_dir, settings.default_voice)
+    piper = PiperEngine(settings.voice_dirs(), settings.default_voice)
     if piper.available():
         engines["piper"] = piper
     espeak = EspeakEngine(settings.default_voice)

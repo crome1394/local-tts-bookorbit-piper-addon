@@ -12,6 +12,7 @@ from .audio import AudioData, AudioError, concat, encode
 from .config import DEFAULT_KOKORO_VOICE, DEFAULT_PIPER_VOICE, VOICE_ID, Settings
 from .engines.base import Engine, Voice
 from .text import normalize, split_for_synthesis
+from .timings import WordTiming, timings_from_duration
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class Synthesizer:
         self.settings = settings
         self._gate = _Gate(settings.concurrency, settings.queue)
         self._cache: OrderedDict[str, bytes] = OrderedDict()
+        self._cache_words: dict[str, tuple[WordTiming, ...]] = {}
         self._cache_bytes = 0
         self._cache_lock = threading.Lock()
         self._voices: dict[str, Voice] = {voice.id: voice for voice in engine.voices()}
@@ -99,6 +101,23 @@ class Synthesizer:
         }
 
     def speak(self, text: str, voice: str | None, speed: float, fmt: str) -> bytes:
+        payload, _words = self._speak(text, voice, speed, fmt, captioned=False)
+        return payload
+
+    def speak_captioned(
+        self, text: str, voice: str | None, speed: float, fmt: str
+    ) -> tuple[bytes, tuple[WordTiming, ...]]:
+        """Audio plus the time each word is spoken.
+
+        BookOrbit uses this for word highlighting. The synthesis is the same
+        work as ``speak``; the timings come from phoneme lengths when the
+        engine has them.
+        """
+        return self._speak(text, voice, speed, fmt, captioned=True)
+
+    def _speak(
+        self, text: str, voice: str | None, speed: float, fmt: str, captioned: bool
+    ) -> tuple[bytes, tuple[WordTiming, ...]]:
         text = normalize(text)
         if not text:
             raise SynthesisError("input text is empty")
@@ -121,7 +140,7 @@ class Synthesizer:
             raise SynthesisError("speed must be a finite number")
         speed = min(4.0, max(0.25, speed))
 
-        key = self._key(voice, speed, fmt, text)
+        key = self._key(voice, speed, fmt, text, captioned)
         cached = self._cache_get(key)
         if cached is not None:
             return cached
@@ -135,16 +154,19 @@ class Synthesizer:
             chunks = split_for_synthesis(text)
             if not chunks:
                 raise SynthesisError("input text is empty")
-            parts: list[AudioData] = [
-                self.engine.synthesize(chunk, voice, speed) for chunk in chunks
-            ]
+            parts: list[AudioData] = []
+            for chunk in chunks:
+                audio = self.engine.synthesize(chunk, voice, speed)
+                if not audio.words:
+                    audio.words = timings_from_duration(chunk, audio.duration)
+                parts.append(audio)
             try:
                 audio = parts[0] if len(parts) == 1 else concat(parts)
                 payload, _ = encode(audio, fmt, self.settings.mp3_bitrate)
             except AudioError as exc:
                 log.warning("audio encode failed: %s", exc)
                 raise SynthesisError("could not encode audio in the requested format") from exc
-            self._cache_put(key, payload)
+            self._cache_put(key, payload, audio.words)
             log.info(
                 "synthesized %d chars with %s/%s in %.2fs (%.1fs audio, %s)",
                 len(text),
@@ -154,23 +176,26 @@ class Synthesizer:
                 audio.duration,
                 fmt,
             )
-            return payload
+            return payload, audio.words
         finally:
             self._gate.release()
 
     # ---- cache ---------------------------------------------------------
-    def _key(self, voice: str, speed: float, fmt: str, text: str) -> str:
-        raw = f"{self.engine.name}|{voice}|{speed:.3f}|{fmt}|{text}"
+    def _key(self, voice: str, speed: float, fmt: str, text: str, captioned: bool) -> str:
+        raw = f"{self.engine.name}|{voice}|{speed:.3f}|{fmt}|{int(captioned)}|{text}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    def _cache_get(self, key: str) -> bytes | None:
+    def _cache_get(self, key: str) -> tuple[bytes, tuple[WordTiming, ...]] | None:
         with self._cache_lock:
             value = self._cache.get(key)
-            if value is not None:
-                self._cache.move_to_end(key)
-            return value
+            if value is None:
+                return None
+            self._cache.move_to_end(key)
+            return value, self._cache_words.get(key, ())
 
-    def _cache_put(self, key: str, value: bytes) -> None:
+    def _cache_put(
+        self, key: str, value: bytes, words: tuple[WordTiming, ...] = ()
+    ) -> None:
         limit = self.settings.cache_mb * 1024 * 1024
         if limit <= 0 or len(value) > limit:
             return
@@ -178,8 +203,11 @@ class Synthesizer:
             previous = self._cache.pop(key, None)
             if previous is not None:
                 self._cache_bytes -= len(previous)
+            self._cache_words.pop(key, None)
             self._cache[key] = value
+            self._cache_words[key] = words
             self._cache_bytes += len(value)
             while self._cache_bytes > limit and self._cache:
-                _, evicted = self._cache.popitem(last=False)
+                evicted_key, evicted = self._cache.popitem(last=False)
+                self._cache_words.pop(evicted_key, None)
                 self._cache_bytes -= len(evicted)

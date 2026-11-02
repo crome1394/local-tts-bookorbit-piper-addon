@@ -1,3 +1,4 @@
+import base64
 import shutil
 
 import pytest
@@ -39,6 +40,29 @@ def test_voice_listing_shape(client):
     for key in ("id", "name", "short_name", "language", "locale", "gender"):
         assert key in voice
     assert voice["voice_id"] == voice["id"]
+
+
+def test_captioned_speech_returns_word_times(client):
+    response = client.post(
+        "/dev/captioned_speech",
+        json={
+            "model": "tts-1",
+            "input": "Hello there.",
+            "voice": None,
+            "speed": 1.0,
+            "response_format": "wav",
+            "stream": False,
+            "return_timestamps": True,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    audio = base64.b64decode(body["audio"])
+    assert audio.startswith(b"RIFF")
+    words = body["timestamps"]
+    assert [item["word"] for item in words] == ["Hello", "there."]
+    assert words[0]["start_time"] == 0
+    assert words[-1]["end_time"] >= words[0]["end_time"]
 
 
 def test_speech_wav(client):

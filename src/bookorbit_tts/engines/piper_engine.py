@@ -1,37 +1,74 @@
-"""Piper engine (ONNX, ~60 MB per voice, real time on a Raspberry Pi)."""
+"""Piper engine (ONNX, one voice resident, real time on a small CPU)."""
 
 from __future__ import annotations
 
 import json
 import logging
 import threading
+from collections.abc import Iterable
 from pathlib import Path
 
 from ..audio import AudioData
+from ..config import PIPER_VOICE_ID
+from ..timings import timings_from_alignments
 from .base import Engine, Voice, guess_gender, humanize, language_name
 
 log = logging.getLogger(__name__)
+
+# A 4 GB container does not need a shelf of high-quality models resident
+# on disk listings. Two are loaded at a time; this caps how many we even index.
+_MAX_VOICES = 64
 
 
 class PiperEngine(Engine):
     name = "piper"
     quality = 10
 
-    def __init__(self, voices_dir: Path, default_voice: str | None = None) -> None:
-        self.voices_dir = Path(voices_dir)
+    def __init__(
+        self,
+        voices_dir: Path | Iterable[Path],
+        default_voice: str | None = None,
+    ) -> None:
+        if isinstance(voices_dir, Path):
+            self.voices_dirs = [voices_dir]
+        else:
+            self.voices_dirs = [Path(directory) for directory in voices_dir]
+        self.voices_dir = self.voices_dirs[0] if self.voices_dirs else Path(".")
         self.default_voice = default_voice
         self._loaded: dict[str, object] = {}
         self._lock = threading.RLock()
 
     # ---- discovery -----------------------------------------------------
     def _pairs(self) -> dict[str, tuple[Path, Path]]:
+        """Find ``name.onnx`` + ``name.onnx.json`` under each voices directory.
+
+        A Hugging Face checkout of rhasspy/piper-voices is nested
+        (``en/en_US/ryan/high/en_US-ryan-high.onnx``). Flat files in the same
+        directory work too. The filename has to be a Piper voice id, and both
+        files have to stay inside the directory they were found in.
+        """
         found: dict[str, tuple[Path, Path]] = {}
-        if not self.voices_dir.is_dir():
-            return found
-        for model in sorted(self.voices_dir.glob("*.onnx")):
-            config = model.with_suffix(".onnx.json")
-            if config.exists():
-                found[model.name[: -len(".onnx")]] = (model, config)
+        for root in self.voices_dirs:
+            if not root.is_dir():
+                continue
+            try:
+                root_real = root.resolve()
+            except OSError:
+                continue
+            for model in sorted(root.rglob("*.onnx")):
+                if len(found) >= _MAX_VOICES:
+                    log.warning("stopped at %d Piper voices under %s", _MAX_VOICES, root)
+                    return found
+                voice_id = model.name[: -len(".onnx")]
+                if voice_id in found or not PIPER_VOICE_ID.fullmatch(voice_id):
+                    continue
+                config = Path(f"{model}.json")
+                if not config.is_file():
+                    continue
+                if not _inside(root_real, model) or not _inside(root_real, config):
+                    log.warning("skipping %s; it resolves outside %s", model, root)
+                    continue
+                found[voice_id] = (model, config)
         return found
 
     def available(self) -> bool:
@@ -68,9 +105,10 @@ class PiperEngine(Engine):
     def _pick(self, voice_id: str | None) -> str:
         pairs = self._pairs()
         if not pairs:
+            where = ", ".join(str(directory) for directory in self.voices_dirs) or "(none)"
             raise RuntimeError(
-                f"no Piper voices in {self.voices_dir}; run "
-                "`bookorbit-tts download` or set BOOKORBIT_TTS_VOICE"
+                f"no Piper voices in {where}; drop a voice into the voices "
+                "directory or run `bookorbit-tts download`"
             )
         candidate = voice_id or self.default_voice
         if candidate and candidate in pairs:
@@ -94,7 +132,13 @@ class PiperEngine(Engine):
 
             model_path, config_path = pairs[voice_id]
             log.info("loading Piper voice %s", voice_id)
-            voice = PiperVoice.load(str(model_path), config_path=str(config_path))
+            # Alignments expose phoneme lengths the model already computed.
+            # Without the onnx package, Piper loads the file unchanged.
+            voice = PiperVoice.load(
+                str(model_path),
+                config_path=str(config_path),
+                include_alignments=True,
+            )
             # Two voices is plenty; more would just pin memory.
             if len(self._loaded) >= 2:
                 self._loaded.pop(next(iter(self._loaded)))
@@ -115,7 +159,23 @@ class PiperEngine(Engine):
             voice = self._voice(voice_id)
             speed = min(4.0, max(0.25, speed))
             config = SynthesisConfig(length_scale=1.0 / speed, normalize_audio=True)
-            pcm = b"".join(
-                chunk.audio_int16_bytes for chunk in voice.synthesize(text, syn_config=config)
-            )
-            return AudioData(pcm=pcm, sample_rate=voice.config.sample_rate)
+            pieces: list[bytes] = []
+            alignments: list[tuple[str, int]] = []
+            sample_rate = voice.config.sample_rate
+            for chunk in voice.synthesize(text, syn_config=config, include_alignments=True):
+                pieces.append(chunk.audio_int16_bytes)
+                sample_rate = chunk.sample_rate
+                for alignment in chunk.phoneme_alignments or []:
+                    alignments.append((alignment.phoneme, int(alignment.num_samples)))
+            audio = AudioData(pcm=b"".join(pieces), sample_rate=sample_rate)
+            if alignments:
+                audio.words = timings_from_alignments(text, alignments, sample_rate)
+            return audio
+
+
+def _inside(root: Path, path: Path) -> bool:
+    try:
+        path.resolve().relative_to(root)
+    except (OSError, ValueError):
+        return False
+    return True

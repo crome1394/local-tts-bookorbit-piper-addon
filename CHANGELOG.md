@@ -7,11 +7,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
+### Added
+
+- `POST /dev/captioned_speech` returns the audio and the time of each word, which is what BookOrbit uses for word highlighting. The timings come from the phoneme lengths Piper already computes.
+- A `voices/` directory for Piper models downloaded from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices/tree/main). Nested folders, including `en/en_US/ryan/high`, are picked up. Files that are not a Piper voice id, or that resolve outside the directory, are ignored.
+
 ### Changed
 
-- The README quick start clones the repository. The portable tarball is built
-  with `./build-portable.sh`. A GitHub release asset is not attached yet.
-- Clone instructions run `chmod +x` on the shell scripts before `./install.sh`.
+- The README is shorter, keeps the badge row, and links the portable tarball.
 
 ## [0.1.1] - 2026-11-01
 

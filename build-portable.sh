@@ -52,6 +52,8 @@ cat >"$BUNDLE/run.sh" <<'EOF'
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export BOOKORBIT_TTS_DATA_DIR="${BOOKORBIT_TTS_DATA_DIR:-$ROOT/data}"
+export BOOKORBIT_TTS_VOICES_DIR="${BOOKORBIT_TTS_VOICES_DIR:-$ROOT/voices}"
+mkdir -p "$BOOKORBIT_TTS_VOICES_DIR"
 export BOOKORBIT_TTS_HOST="${BOOKORBIT_TTS_HOST:-127.0.0.1}"
 export BOOKORBIT_TTS_PORT="${BOOKORBIT_TTS_PORT:-8765}"
 export BOOKORBIT_TTS_ENGINE="${BOOKORBIT_TTS_ENGINE:-piper}"
@@ -96,6 +98,10 @@ mp3 by default, so this is optional).
 
 Bundled voice: $VOICE (CC0). Other voices have their own licenses; see
 THIRD_PARTY_NOTICES.md before redistributing them.
+
+Extra Piper voices go in the voices/ directory. A folder from
+https://huggingface.co/rhasspy/piper-voices can be copied in as-is.
+Restart after adding one.
 
 License: GPL-3.0-or-later. See LICENSE and NOTICE.
 

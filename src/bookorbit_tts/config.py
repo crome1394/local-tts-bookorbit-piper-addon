@@ -178,6 +178,28 @@ class Settings:
     def voices_dir(self) -> Path:
         return self.data_dir / "voices"
 
+    def voice_dirs(self) -> list[Path]:
+        """Directories scanned for Piper voices.
+
+        ``BOOKORBIT_TTS_VOICES_DIR`` is the drop folder (a Hugging Face
+        checkout can sit here as-is). ``data/voices`` is always included
+        and is where ``bookorbit-tts download`` writes.
+        """
+        directories: list[Path] = []
+        extra = _env("VOICES_DIR")
+        if extra:
+            directories.append(Path(extra).expanduser())
+        directories.append(self.voices_dir)
+        unique: list[Path] = []
+        seen: set[str] = set()
+        for directory in directories:
+            key = str(directory)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(directory)
+        return unique
+
     @property
     def kokoro_dir(self) -> Path:
         return self.data_dir / "kokoro"
