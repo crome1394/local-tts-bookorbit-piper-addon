@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "local-tts-bookorbit-piper-addon"
+version = "0.1.1"
+description = "Local, OpenAI-compatible text-to-speech server for BookOrbit, tuned for small CPUs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "crome1394" }]
+keywords = ["bookorbit", "text-to-speech", "tts", "piper", "openai", "self-hosted"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "piper-tts>=1.3.0",
+  "lameenc>=1.7",
+]
+
+[project.optional-dependencies]
+kokoro = ["kokoro-onnx>=0.4.9"]
+test = ["pytest>=8", "httpx>=0.27"]
+
+[project.urls]
+Homepage = "https://github.com/crome1394/local-tts-bookorbit-piper-addon"
+Repository = "https://github.com/crome1394/local-tts-bookorbit-piper-addon"
+Issues = "https://github.com/crome1394/local-tts-bookorbit-piper-addon/issues"
+Changelog = "https://github.com/crome1394/local-tts-bookorbit-piper-addon/blob/main/CHANGELOG.md"
+Releases = "https://github.com/crome1394/local-tts-bookorbit-piper-addon/releases"
+
+[project.scripts]
+bookorbit-tts = "bookorbit_tts.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bookorbit_tts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

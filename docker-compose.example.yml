@@ -1,0 +1,40 @@
+services:
+  local-tts-bookorbit-piper-addon:
+    build:
+      context: .
+      # Uncomment to enable Kokoro (more natural, ~140 MB model download).
+      # Raise mem_limit to 2g if you do; Kokoro wants a second core as well.
+      # args:
+      #   EXTRAS: "[kokoro]"
+    container_name: local-tts-bookorbit-piper-addon
+    restart: unless-stopped
+    user: "10001:10001"
+    # Published on localhost only. Other containers on this network reach it
+    # at http://local-tts-bookorbit-piper-addon:8765 without this mapping.
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - ./data:/data
+    environment:
+      BOOKORBIT_TTS_ENGINE: piper
+      BOOKORBIT_TTS_THREADS: "1"
+      BOOKORBIT_TTS_CONCURRENCY: "1"
+      # Inside the container the process must bind all interfaces or the
+      # published port and the compose network cannot connect. The host
+      # mapping above still stops the port appearing on the LAN.
+      BOOKORBIT_TTS_HOST: 0.0.0.0
+    cpus: "1.0"
+    mem_limit: 1g
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # On the same Docker network as BookOrbit the provider URL is:
+    #   http://local-tts-bookorbit-piper-addon:8765/v1
+    networks:
+      - bookorbit
+
+networks:
+  bookorbit:
+    external: true
+    name: bookorbit_default

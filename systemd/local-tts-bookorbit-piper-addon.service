@@ -1,0 +1,25 @@
+[Unit]
+Description=local-tts-bookorbit-piper-addon
+Documentation=https://github.com/crome1394/local-tts-bookorbit-piper-addon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust the path and user to match your installation.
+WorkingDirectory=/opt/local-tts-bookorbit-piper-addon
+# User=bookorbit
+Environment="BOOKORBIT_TTS_HOST=127.0.0.1"
+Environment="BOOKORBIT_TTS_PORT=8765"
+Environment="BOOKORBIT_TTS_ENGINE=piper"
+Environment="BOOKORBIT_TTS_THREADS=1"
+Environment="BOOKORBIT_TTS_CONCURRENCY=1"
+Environment="OMP_NUM_THREADS=1"
+Environment="OPENBLAS_NUM_THREADS=1"
+Nice=5
+ExecStart=/opt/local-tts-bookorbit-piper-addon/run.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
